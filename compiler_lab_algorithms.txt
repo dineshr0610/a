@@ -1,0 +1,297 @@
+COMPILER DESIGN LAB — ALGORITHM NOTES
+======================================
+
+Purpose:
+Use these reusable algorithms when a lab question asks you to build a compiler front end,
+generate Three-Address Code (TAC), optimize the code using code motion, and generate
+target code. Adapt the grammar and token rules to the actual input program.
+
+------------------------------------------------------------
+(a) LEX SPECIFICATION — TOKEN IDENTIFICATION
+------------------------------------------------------------
+
+Algorithm:
+1. Start.
+2. Read the source program character by character.
+3. Identify keywords such as while, for, if, and else.
+4. Identify identifiers using the pattern:
+      [a-zA-Z_][a-zA-Z0-9_]*
+5. Identify integer constants using the pattern:
+      [0-9]+
+6. Identify arithmetic operators such as +, -, *, and /.
+7. Identify relational operators such as <, >, <=, >=, ==, and !=.
+8. Identify assignment operators and punctuation such as =, ;, (, ), {, and }.
+9. Ignore whitespace, tabs, and newlines.
+10. Return the appropriate token for each matched pattern.
+11. Report or return an invalid token for unsupported characters.
+12. Stop.
+
+------------------------------------------------------------
+(b) YACC SPECIFICATION — SYNTAX CHECKING
+------------------------------------------------------------
+
+Algorithm:
+1. Start.
+2. Receive tokens from the lexical analyzer (LEX).
+3. Parse the tokens using the grammar productions.
+4. Check whether the input follows the grammar for expressions,
+   assignments, blocks, loops, and conditional statements.
+5. If all tokens match the grammar, display “Syntax is correct”.
+6. If the input violates the grammar, call the error routine and
+   display “Syntax error”.
+7. Stop.
+
+Common grammar patterns to consider:
+- Assignment:       ID '=' expression ';'
+- Block:            '{' statements '}'
+- While loop:       WHILE '(' condition ')' statement
+- For loop:         FOR '(' initialization ';' condition ';' update ')' statement
+- If statement:     IF '(' condition ')' statement
+- If-else:          IF '(' condition ')' statement ELSE statement
+- Expression:       ID, NUMBER, (expression), or binary arithmetic expressions
+- Condition:        expression RELOP expression
+
+Use only the productions required by the given input, and make sure all token
+names used by YACC are declared and returned consistently by LEX.
+
+------------------------------------------------------------
+(c) SDT IN YACC — THREE-ADDRESS CODE GENERATION
+------------------------------------------------------------
+
+Algorithm:
+1. Start.
+2. Initialize the temporary-variable counter to zero.
+3. Parse the source program using the YACC grammar.
+4. For every arithmetic operation:
+      a. Generate a new temporary variable (t1, t2, t3, ...).
+      b. Emit one TAC instruction for the operation.
+      c. Use the temporary as the result of that expression.
+5. For an assignment:
+      a. Generate TAC for the right-hand expression first.
+      b. Assign the resulting variable or temporary to the left-hand identifier.
+6. For a relational condition:
+      a. Generate TAC for the left and right expressions.
+      b. Emit a conditional jump to the body label when the condition is true.
+      c. Emit a jump to the exit label when the condition is false.
+7. For a while loop:
+      a. Emit the loop-start label.
+      b. Generate the condition code.
+      c. Emit the conditional branch and exit jump.
+      d. Emit the body label and body code.
+      e. Emit a jump back to the loop-start label.
+      f. Emit the loop-exit label.
+8. For a for loop:
+      a. Generate initialization code once.
+      b. Emit the condition label and condition code.
+      c. Emit a conditional jump to the body and a jump to the exit.
+      d. Generate the body code.
+      e. Generate the update expression.
+      f. Jump back to the condition label.
+      g. Emit the exit label.
+9. For an if statement:
+      a. Generate the condition.
+      b. Emit a conditional jump to the true branch.
+      c. Emit a jump to the exit or false branch.
+      d. Generate the branch instructions and labels.
+10. Print or save the generated TAC.
+11. Stop.
+
+TAC examples:
+    a = b + c * d
+becomes:
+    t1 = c * d
+    t2 = b + t1
+    a = t2
+
+A while loop commonly has this structure:
+    L1:
+    [condition computation]
+    if condition goto L2
+    goto L3
+    L2:
+    [body TAC]
+    goto L1
+    L3:
+
+------------------------------------------------------------
+(d) CODE OPTIMIZATION — CODE MOTION AND CONSTANT FOLDING
+------------------------------------------------------------
+
+Algorithm:
+1. Start.
+2. Read the generated Three-Address Code.
+3. Identify arithmetic expressions whose operands are constants.
+4. Evaluate constant expressions at compile time and replace them with
+   their results (constant folding).
+5. Identify loops and determine which expressions inside each loop are
+   loop-invariant.
+6. Check that the operands of each candidate expression are not changed
+   in the loop and that moving the expression preserves program behavior.
+7. Move safe loop-invariant computations before the loop.
+8. Keep assignments and other operations inside the loop when moving them
+   could change behavior, especially when the loop executes zero times.
+9. Preserve labels, condition checks, and jumps.
+10. Write the optimized TAC.
+11. Stop.
+
+Example:
+Before:
+    t1 = 16 * 5
+    r = t1
+
+After constant folding:
+    r = 80
+
+Example of code motion:
+Before:
+    L1:
+    t1 = n * 4
+    if m < t1 goto L2
+    goto L3
+    L2:
+    ...
+    goto L1
+    L3:
+
+If n is not modified in the loop, move the calculation before L1:
+    t1 = n * 4
+    L1:
+    if m < t1 goto L2
+    goto L3
+    L2:
+    ...
+    goto L1
+    L3:
+
+------------------------------------------------------------
+(e) BACK END — TARGET CODE GENERATION
+------------------------------------------------------------
+
+Algorithm:
+1. Start.
+2. Read the optimized TAC.
+3. Process each TAC instruction.
+4. For arithmetic instructions:
+      a. Load the first operand into a register.
+      b. Perform the required arithmetic operation.
+      c. Store the result in a register or destination location.
+5. For assignments:
+      a. Move or load the source value.
+      b. Store it in the destination variable.
+6. For relational conditions:
+      a. Compare the operands.
+      b. Emit the appropriate conditional jump.
+7. For labels, emit target labels.
+8. For unconditional jumps, emit jump instructions.
+9. Print or save the generated target code.
+10. Stop.
+
+Illustrative TAC-to-target mappings:
+    t1 = a + b
+becomes:
+    MOV R1, a
+    ADD R1, b
+    MOV t1, R1
+
+    t1 = a * b
+becomes:
+    MOV R1, a
+    MUL R1, b
+    MOV t1, R1
+
+    if a < b goto L1
+becomes:
+    CMP a, b
+    JLT L1
+
+    goto L1
+becomes:
+    JMP L1
+
+These are illustrative pseudo-assembly instructions; actual target instructions
+depend on the architecture and instruction set.
+
+------------------------------------------------------------
+(f) INTEGRATION AND VERIFICATION
+------------------------------------------------------------
+
+Algorithm:
+1. Start.
+2. Create the LEX specification for token recognition.
+3. Create the YACC grammar for syntax checking.
+4. Add SDT actions to generate TAC.
+5. Compile the lexer and parser together.
+6. Run the parser using the source program as input.
+7. Verify that valid input is accepted and TAC is generated.
+8. Pass the TAC to the optimizer.
+9. Verify that the optimized TAC contains the intended transformations.
+10. Pass the optimized TAC to the target-code generator.
+11. Verify that target instructions are generated.
+12. Test invalid input, such as a missing semicolon or unmatched brace.
+13. Confirm that invalid syntax is reported rather than treated as valid.
+14. Record the outputs and stop.
+
+------------------------------------------------------------
+SAMPLE PROGRAM AND EXPECTED TAC
+------------------------------------------------------------
+
+Input:
+    while (m < n * 4)
+    {
+        r = 16 * 5;
+        s = x * y + z;
+        t = m + s;
+    }
+
+One possible TAC sequence:
+    L1:
+    t1 = n * 4
+    if m < t1 goto L2
+    goto L3
+    L2:
+    t2 = 16 * 5
+    r = t2
+    t3 = x * y
+    t4 = t3 + z
+    s = t4
+    t5 = m + s
+    t = t5
+    goto L1
+    L3:
+
+Possible optimized TAC, assuming n, x, y, and z are not modified in the loop:
+    t1 = n * 4
+    t2 = x * y
+    t3 = t2 + z
+    L1:
+    if m < t1 goto L2
+    goto L3
+    L2:
+    r = 80
+    s = t3
+    t4 = m + s
+    t = t4
+    goto L1
+    L3:
+
+Important:
+- The exact TAC temporary names and instruction order may vary.
+- Re-evaluate the loop condition on every iteration.
+- Only move computations when the transformation is safe.
+- A compiler lab implementation may support only a restricted subset of C.
+- Make LEX token names, YACC declarations, and semantic actions consistent.
+
+------------------------------------------------------------
+QUICK EXAM CHECKLIST
+------------------------------------------------------------
+
+[ ] LEX recognizes all keywords, identifiers, numbers, operators, and punctuation.
+[ ] YACC declares every token returned by LEX.
+[ ] Grammar supports the constructs in the given input.
+[ ] Operator precedence is correct.
+[ ] TAC uses temporaries for arithmetic expressions.
+[ ] Loop labels and jumps are correct.
+[ ] Optimization preserves behavior.
+[ ] Target code represents each TAC instruction correctly.
+[ ] Valid and invalid inputs are tested.
+[ ] All modules are compiled and run in the correct order.
